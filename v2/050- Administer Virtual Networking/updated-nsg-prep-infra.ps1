@@ -31,6 +31,9 @@ $region = "westus" # Change to a different region
 $existingPublicIpA = "existing-public-ip-a"
 $existingPublicIpB = "existing-public-ip-b"
 
+$retryCount = 3
+$retryInterval = 30 # seconds
+
 for ($i = 1; $i -lt 3; $i++) {
     Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
     $spAvm = New-AzVM -Name "workload-a-vm-$i" `
@@ -41,22 +44,35 @@ for ($i = 1; $i -lt 3; $i++) {
         -VirtualNetworkName "vnet-workloads" `
         -SubnetName 'snet-workload-a' `
         -Credential $credential `
-        -PublicIpAddressName $existingPublicIpA `
+        -PublicIpAddressName "workload-a-vm-$i-pip" `
         -PublicIpSku Standard
     $fqdn = $spAvm.FullyQualifiedDomainName
     Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green 
 
     Write-Host "Creating workload-b-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black" 
-    $spBvm = New-AzVM -Name "workload-b-vm-$i" `
-        -ResourceGroupName $rg `
-        -Location $region `
-        -Image "Ubuntu2204" `
-        -Size 'Standard_B1s' `
-        -VirtualNetworkName "vnet-workloads" `
-        -SubnetName 'snet-workload-b' `
-        -Credential $credential `
-        -PublicIpAddressName $existingPublicIpB `
-        -PublicIpSku Standard
-    $fqdn = $spBvm.FullyQualifiedDomainName
-    Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
+    $attempt = 0
+    while ($attempt -lt $retryCount) {
+        try {
+            $spBvm = New-AzVM -Name "workload-b-vm-$i" `
+                -ResourceGroupName $rg `
+                -Location $region `
+                -Image "Ubuntu2204" `
+                -Size 'Standard_B1s' `
+                -VirtualNetworkName "vnet-workloads" `
+                -SubnetName 'snet-workload-b' `
+                -Credential $credential `
+                -PublicIpAddressName "workload-b-vm-$i-pip" `
+                -PublicIpSku Standard
+            $fqdn = $spBvm.FullyQualifiedDomainName
+            Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
+            break
+        } catch {
+            Write-Host "Attempt $($attempt + 1) failed. Retrying in $retryInterval seconds..." -ForegroundColor Red
+            Start-Sleep -Seconds $retryInterval
+            $attempt++
+        }
+    }
+    if ($attempt -eq $retryCount) {
+        Write-Host "Failed to create workload-b-vm-$i after $retryCount attempts." -ForegroundColor Red
+    }
 }
