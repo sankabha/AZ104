@@ -26,6 +26,8 @@ $workloadB = New-AzVirtualNetworkSubnetConfig -Name 'snet-workload-b' -AddressPr
 
 New-AzVirtualNetwork -ResourceGroupName $rg -Location $region -Name "vnet-workloads" -AddressPrefix 192.168.0.0/16 -Subnet $workloadA, $workloadB | Out-Null
 
+$region = "westus" # Change to a different region
+
 for ($i = 1; $i -lt 3; $i++) {
     Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
     $spAvm = New-AzVM -Name "workload-a-vm-$i" `
