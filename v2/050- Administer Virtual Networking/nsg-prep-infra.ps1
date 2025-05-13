@@ -24,7 +24,22 @@ Write-Host "Adding workload-a network configuration" -ForegroundColor "Yellow" -
 $workloadA = New-AzVirtualNetworkSubnetConfig -Name 'snet-workload-a' -AddressPrefix 192.168.1.0/24
 $workloadB = New-AzVirtualNetworkSubnetConfig -Name 'snet-workload-b' -AddressPrefix 192.168.2.0/24
 
-New-AzVirtualNetwork -ResourceGroupName $rg -Location $region -Name "vnet-workloads" -AddressPrefix 192.168.0.0/16 -Subnet $workloadA, $workloadB | Out-Null
+# Create Virtual Network
+try {
+    New-AzVirtualNetwork -ResourceGroupName $rg -Location $region -Name "vnet-workloads" -AddressPrefix "192.168.0.0/16" -Subnet $workloadA, $workloadB | Out-Null
+    Write-Host "Virtual network created successfully." -ForegroundColor Green
+} catch {
+    Write-Host "Failed to create virtual network: $_" -ForegroundColor Red
+    break
+}
+
+$region = "westus" # Change to a different region
+
+$existingPublicIpA = "existing-public-ip-a"
+$existingPublicIpB = "existing-public-ip-b"
+
+$retryCount = 3
+$retryInterval = 30 # seconds
 
 for ($i = 1; $i -lt 3; $i++) {
     Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
@@ -39,19 +54,32 @@ for ($i = 1; $i -lt 3; $i++) {
         -PublicIpAddressName "workload-a-vm-$i-pip" `
         -PublicIpSku Standard
     $fqdn = $spAvm.FullyQualifiedDomainName
-    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green
-    
+    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green 
+
     Write-Host "Creating workload-b-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black" 
-    $spBvm = New-AzVM -Name "workload-b-vm-$i" `
-        -ResourceGroupName $rg `
-        -Location $region `
-        -Image "Ubuntu2204" `
-        -Size 'Standard_B1s' `
-        -VirtualNetworkName "vnet-workloads" `
-        -SubnetName 'snet-workload-b' `
-        -Credential $credential `
-        -PublicIpAddressName "workload-b-vm-$i-pip" `
-        -PublicIpSku Standard
-    $fqdn = $spBvm.FullyQualifiedDomainName
-    Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
+    $attempt = 0
+    while ($attempt -lt $retryCount) {
+        try {
+            $spBvm = New-AzVM -Name "workload-b-vm-$i" `
+                -ResourceGroupName $rg `
+                -Location $region `
+                -Image "Ubuntu2204" `
+                -Size 'Standard_B1s' `
+                -VirtualNetworkName "vnet-workloads" `
+                -SubnetName 'snet-workload-b' `
+                -Credential $credential `
+                -PublicIpAddressName "workload-b-vm-$i-pip" `
+                -PublicIpSku Standard
+            $fqdn = $spBvm.FullyQualifiedDomainName
+            Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
+            break
+        } catch {
+            Write-Host "Attempt $($attempt + 1) failed. Retrying in $retryInterval seconds..." -ForegroundColor Red
+            Start-Sleep -Seconds $retryInterval
+            $attempt++
+        }
+    }
+    if ($attempt -eq $retryCount) {
+        Write-Host "Failed to create workload-b-vm-$i after $retryCount attempts." -ForegroundColor Red
+    }
 }
