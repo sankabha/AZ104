@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Break'
 
 #Variables
 $rg = "rg-nsg-workload-$(Get-Date -Format 'yyyyMMdd')"
-$region = "eastus"
+$region = "centralindia"
 $username = "kodekloud" #username for the VM
 $plainPassword = "VMP@55w0rd" #your VM password
 
@@ -36,8 +36,6 @@ New-AzVirtualNetwork `
     -AddressPrefix 192.168.0.0/16 `
     -Subnet $workloadA,$workloadB  | Out-Null
 
-
-
 for ($i = 1; $i -lt 3; $i++) {
     Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
     $spAvm = New-AzVM -Name "workload-a-vm-$i" `
@@ -51,11 +49,12 @@ for ($i = 1; $i -lt 3; $i++) {
         -PublicIpAddressName "workload-a-vm-$i-pip" `
         -PublicIpSku Standard
     $fqdn = $spAvm.FullyQualifiedDomainName
-    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green 
+    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green
+    
     Write-Host "Creating workload-b-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black" 
     $spBvm = New-AzVM -Name "workload-b-vm-$i" `
         -ResourceGroupName $rg `
-        -Location eastus `
+        -Location westus `
         -Image "Ubuntu2204"  `
         -Size 'Standard_B1s' `
         -VirtualNetworkName "vnet-workloads" `
