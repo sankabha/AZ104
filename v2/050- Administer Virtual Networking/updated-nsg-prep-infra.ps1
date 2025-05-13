@@ -28,32 +28,35 @@ New-AzVirtualNetwork -ResourceGroupName $rg -Location $region -Name "vnet-worklo
 
 $region = "westus" # Change to a different region
 
-for ($i = 1; $i -lt 3; $i++) {
-    Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
-    $spAvm = New-AzVM -Name "workload-a-vm-$i" `
-        -ResourceGroupName $rg `
-        -Location $region `
-        -Size 'Standard_B1s' `
-        -Image "Ubuntu2204" `
-        -VirtualNetworkName "vnet-workloads" `
-        -SubnetName 'snet-workload-a' `
-        -Credential $credential `
-        -PublicIpAddressName "workload-a-vm-$i-pip" `
-        -PublicIpSku Standard
-    $fqdn = $spAvm.FullyQualifiedDomainName
-    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green 
+$existingPublicIpA = "existing-public-ip-a"
+$existingPublicIpB = "existing-public-ip-b"
 
-    Write-Host "Creating workload-b-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black" 
-    $spBvm = New-AzVM -Name "workload-b-vm-$i" `
-        -ResourceGroupName $rg `
-        -Location $region `
-        -Image "Ubuntu2204" `
-        -Size 'Standard_B1s' `
-        -VirtualNetworkName "vnet-workloads" `
-        -SubnetName 'snet-workload-b' `
-        -Credential $credential `
-        -PublicIpAddressName "workload-b-vm-$i-pip" `
-        -PublicIpSku Standard
-    $fqdn = $spBvm.FullyQualifiedDomainName
-    Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
+for ($i = 1; $i -lt 3; $i++) {
+    Write-Host "Creating workload-a-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black"
+    $spAvm = New-AzVM -Name "workload-a-vm-$i" `
+        -ResourceGroupName $rg `
+        -Location $region `
+        -Size 'Standard_B1s' `
+        -Image "Ubuntu2204" `
+        -VirtualNetworkName "vnet-workloads" `
+        -SubnetName 'snet-workload-a' `
+        -Credential $credential `
+        -PublicIpAddressName $existingPublicIpA `
+        -PublicIpSku Standard
+    $fqdn = $spAvm.FullyQualifiedDomainName
+    Write-Host "workload-a-vm-$i FQDN : $fqdn " -ForegroundColor Green 
+
+    Write-Host "Creating workload-b-vm-$i" -ForegroundColor "Yellow" -BackgroundColor "Black" 
+    $spBvm = New-AzVM -Name "workload-b-vm-$i" `
+        -ResourceGroupName $rg `
+        -Location $region `
+        -Image "Ubuntu2204" `
+        -Size 'Standard_B1s' `
+        -VirtualNetworkName "vnet-workloads" `
+        -SubnetName 'snet-workload-b' `
+        -Credential $credential `
+        -PublicIpAddressName $existingPublicIpB `
+        -PublicIpSku Standard
+    $fqdn = $spBvm.FullyQualifiedDomainName
+    Write-Host "workload-b-vm-$i FQDN: $fqdn " -ForegroundColor Green 
 }
